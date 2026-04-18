@@ -27,11 +27,11 @@ The system is architected to support multiple enterprise configurations — the 
 | Backend        | Python, Flask, psycopg2                    |
 | Database       | PostgreSQL                                 |
 | File Storage   | AWS S3 (via boto3)                         |
-| PDF Parsing    | PyMuPDF (fitz)                             |
+| PDF Parsing    | XXX                       |
 | Email          | Flask-Mail (SMTP/SSL)                      |
-| Vector DB      | ChromaDB (local/persistent)                |
-| Embeddings     | Ollama — qwen3-embedding:0.6b              |
-| Primary LLM    | Ollama — mistral:latest (local)            |
+| Vector DB      | XXX       |
+| Embeddings     | XXX            |
+| Primary LLM    | XXX         |
 | Frontend       | Jinja2 + Vanilla CSS + Vanilla JS          |
 | PWA            | Service Worker + manifest.json             |
 
@@ -63,31 +63,6 @@ Three roles are enforced across the system:
 
 ## Architecture
 
-```
-User Query
-    |
-    v
-Flask API
-    |
-    +---> ChromaDB (semantic search) ---> top-k chunks
-    |
-    +---> Ollama LLM (mistral) ---> answer grounded in SOP context
-    |
-    v
-Response to User
-
-PDF Upload
-    |
-    v
-PyMuPDF (parse + chunk)
-    |
-    v
-Ollama Embeddings (qwen3-embedding:0.6b)
-    |
-    v
-ChromaDB (store vectors) + AWS S3 (store original PDF)
-```
-
 ---
 
 ## Security
@@ -109,12 +84,6 @@ The application is installable as a Progressive Web App on desktop and mobile vi
 ## Enterprise Deployments
 
 The portal has been deployed or is in procurement for multiple enterprises, each with a custom document hierarchy:
-
-| Client         | Document Hierarchy                          |
-|----------------|---------------------------------------------|
-| Innovatiview   | Department / Sub-department / Document      |
-| Abiz Corp      | Client / Project / Document                 |
-| Emaar          | Custom hierarchy (enterprise configuration) |
 
 ---
 
