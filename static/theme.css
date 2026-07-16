@@ -1,0 +1,123 @@
+/* ==========================================================================
+   Stratum shared theme — every page loads this file, so tokens, buttons,
+   nav and panels are defined exactly once. Page files add layout only.
+   Palette: grey canvas, white panels, black/grey/white ink; red = errors only.
+   ========================================================================== */
+:root {
+    --bg: #F6F6F7;          /* soft grey page canvas */
+    --surface: #FFFFFF;     /* white panels          */
+    --surface-2: #FAFAFA;
+    --line: #ECECEE;        /* gentle hairlines      */
+    --line-2: #E0E0E3;
+    --ink: #232327;         /* soft charcoal, not pure black */
+    --ink-2: #5C5C64;
+    --ink-3: #A6A6AD;
+    --accent: #1E3A8A;      /* corporate navy — buttons, icons, highlights */
+    --accent-hover: #2B4EA2;
+    --accent-tint: rgba(30, 58, 138, .07);
+    --danger: #B91C1C;      /* red — errors & warnings only */
+    --danger-tint: rgba(185, 28, 28, .06);
+    --radius: 14px;
+    --font: Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --mono: Consolas, "Cascadia Code", ui-monospace, monospace;
+    --shadow: 0 1px 3px rgba(20, 20, 25, .04), 0 4px 14px rgba(20, 20, 25, .04);
+    --shadow-lg: 0 12px 40px rgba(20, 20, 25, .10);
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); line-height: 1.65; font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgba(35, 35, 39, .1); }
+a { color: var(--ink); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+button { font-family: inherit; cursor: pointer; border: none; }
+input { font-family: inherit; }
+.mono { font-family: var(--mono); }
+.hidden { display: none !important; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.spacer { flex: 1; }
+
+/* ---------- buttons (the only button styles on the site) ---------- */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer; font-family: var(--font); font-weight: 550; font-size: 14px;
+    padding: 10px 20px; border-radius: 10px; border: none;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, opacity .15s;
+}
+.btn-primary { background: var(--ink); color: #fff; box-shadow: 0 1px 2px rgba(20, 20, 25, .2); }
+.btn-primary:hover { background: #3E3E45; text-decoration: none; }
+.btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--ink-3); text-decoration: none; }
+.btn-danger-ghost { background: var(--surface); color: var(--danger); border: 1px solid var(--line-2); }
+.btn-danger-ghost:hover { background: var(--danger-tint); border-color: rgba(185, 28, 28, .4); }
+.btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 9px; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---------- top bar (same bar on every page) ---------- */
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, .88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.nav-in { display: flex; align-items: center; gap: 8px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; color: var(--ink); }
+.brand:hover { text-decoration: none; }
+.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--ink); display: flex; align-items: center; justify-content: center; color: #fff; flex: none; }
+.brand .crumb { color: var(--ink-3); font-weight: 500; font-family: var(--mono); font-size: 12px; margin-left: 2px; }
+.navlink { color: var(--ink-2); font-size: 13.5px; font-weight: 500; padding: 8px 13px; border-radius: 8px; }
+a.navlink:hover { color: var(--ink); background: var(--bg); text-decoration: none; }
+.nav .btn { padding: 8px 16px; font-size: 13px; }
+.pill {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+    border: 1px solid var(--line); background: var(--bg);
+    border-radius: 999px; padding: 5px 13px;
+}
+.pill strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- white panels + hairline-divided grids ---------- */
+.panel { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--line); box-shadow: var(--shadow); }
+.panel-grid { display: grid; gap: 1px; }
+.panel-solid { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.cell { background: var(--surface); padding: 26px; }
+
+/* ---------- section scaffolding ---------- */
+section, [id] { scroll-margin-top: 76px; }  /* anchors land below the sticky nav */
+.sec-head { margin-bottom: 22px; max-width: 640px; }
+.sec-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; font-weight: 600; }
+.sec-head h2 { margin: 0 0 8px; font-size: clamp(22px, 3.2vw, 28px); letter-spacing: -.02em; font-weight: 650; line-height: 1.25; }
+.sec-head p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+
+/* ---------- form fields ---------- */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink-2); }
+.field input {
+    width: 100%; padding: 11px 14px; border: 1px solid var(--line-2); border-radius: 10px;
+    font-size: 14px; background: var(--surface); color: var(--ink);
+    transition: border .18s, box-shadow .18s;
+}
+.field input::placeholder { color: var(--ink-3); }
+.field input:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 4px rgba(35, 35, 39, .06); }
+
+/* ---------- code blocks with copy button ---------- */
+.codeblock {
+    position: relative; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+    color: var(--ink); overflow-x: auto; white-space: pre;
+}
+.codeblock .c { color: var(--ink-3); }
+.codeblock .k { color: var(--ink); font-weight: 600; }
+.codeblock .v { color: var(--ink-2); }
+.copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface); color: var(--ink-2); border: 1px solid var(--line-2);
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    border-radius: 5px; padding: 5px 10px; cursor: pointer;
+}
+.copy-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+.copy-btn.ok, .copy-btn.copied { color: var(--ink); border-color: var(--ink); }
+
+/* ---------- footer ---------- */
+footer { margin-top: 28px; padding: 26px 0 110px; color: var(--ink-3); font-size: 13px; border-top: 1px solid var(--line); background: var(--surface); }
+.foot-in { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+footer a { color: var(--ink-2); }
+footer .mono { font-size: 11.5px; }
