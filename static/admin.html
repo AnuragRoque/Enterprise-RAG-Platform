@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stratum — Admin</title>
+    <link rel="stylesheet" href="/static/theme.css">
+    <style>
+        /* Admin-specific layout only — tokens, buttons, nav, fields, code
+           blocks all come from /static/theme.css. The aliases below map the
+           admin markup's older variable names onto the shared tokens. */
+        :root {
+            --card: var(--surface);
+            --card-2: var(--surface-2);
+            --muted: var(--ink-2);
+            --faint: var(--ink-3);
+            --brand: var(--ink);
+            --brand-2: var(--ink-2);
+            --brand-tint: var(--surface-2);
+            --brand-line: var(--line-2);
+            --success: var(--ink);
+            /* chart data marks only — validated for contrast/lightness on the
+               light surface; all chart text stays in ink tokens */
+            --chart-bar: #3E63DD;
+            --chart-bar-hover: #2B4EA2;
+        }
+        html, body { height: 100%; }
+
+        /* ---------- Login ---------- */
+        #loginView {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .login-card {
+            width: 100%; max-width: 860px; min-height: 480px;
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: var(--radius); box-shadow: var(--shadow-lg); overflow: hidden;
+            display: grid; grid-template-columns: 1.05fr 1fr;
+        }
+        @media (max-width: 760px) { .login-card { grid-template-columns: 1fr; } .login-side { display: none; } }
+
+        .login-side {
+            position: relative; padding: 36px; display: flex; flex-direction: column;
+            background: var(--surface-2);
+            border-right: 1px solid var(--line); overflow: hidden;
+        }
+        .login-brand { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+        .login-brand .bm {
+            width: 36px; height: 36px; border-radius: 10px; background: var(--ink);
+            display: flex; align-items: center; justify-content: center; color: #fff;
+        }
+        .login-side .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-2); margin: 8px 0 0 48px; }
+        .login-side .facts { margin-top: 44px; display: flex; flex-direction: column; gap: 14px; }
+        .login-side .fact { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; color: var(--ink-2); max-width: 320px; }
+        .login-side .fact svg { flex: none; color: var(--ink); margin-top: 2px; }
+        .login-side .fact strong { color: var(--ink); font-weight: 600; }
+
+        .login-form-side { padding: 40px 38px; display: flex; flex-direction: column; justify-content: center; }
+        .login-form-side h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.02em; }
+        .login-form-side .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 26px; }
+        .field .in-wrap { position: relative; }
+        .field .in-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; }
+        .field .in-wrap input { padding-left: 38px; }
+        #loginBtn { width: 100%; justify-content: center; margin-top: 6px; padding: 11px; }
+        .login-error {
+            background: var(--danger-tint); color: var(--danger); border: 1px solid rgba(185, 28, 28, .3);
+            padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px;
+        }
+        .login-hint { text-align: center; color: var(--ink-3); font-size: 11.5px; margin-top: 22px; font-family: var(--mono); }
+
+        /* ---------- App shell (same bar as the home page) ---------- */
+        .topbar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 0 24px; height: 56px; background: var(--surface);
+            border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20;
+        }
+        .topbar .logo {
+            width: 28px; height: 28px; border-radius: 8px; background: var(--ink);
+            display: flex; align-items: center; justify-content: center; color: #fff;
+        }
+        .topbar .title { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+        .topbar .title small { display: block; font-weight: 500; color: var(--ink-3); font-size: 10px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+        .topbar a.tblink { color: var(--ink-2); font-size: 13.5px; font-weight: 500; text-decoration: none; padding: 7px 11px; border-radius: 5px; }
+        .topbar a.tblink:hover { color: var(--ink); background: var(--bg); }
+        .user-chip {
+            display: flex; align-items: center; gap: 9px; padding: 4px 12px 4px 5px;
+            border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--surface);
+        }
+        .avatar {
+            width: 26px; height: 26px; border-radius: 50%; background: var(--ink);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700;
+        }
+
+        /* ---------- Sidebar + tab shell ---------- */
+        .shell { display: flex; min-height: calc(100vh - 56px); }
+        .sidenav {
+            width: 212px; flex: none; border-right: 1px solid var(--line); background: var(--surface);
+            padding: 18px 12px; position: sticky; top: 56px; height: calc(100vh - 56px);
+            display: flex; flex-direction: column;
+        }
+        .snav-label { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); padding: 0 12px 8px; }
+        .snav-item {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 9px 12px; border-radius: 8px; background: transparent;
+            color: var(--ink-2); font-size: 13.5px; font-weight: 550; margin-bottom: 2px; text-align: left;
+        }
+        .snav-item svg { flex: none; }
+        .snav-item:hover { background: var(--bg); color: var(--ink); }
+        .snav-item.active { background: var(--ink); color: #fff; }
+        .snav-foot { margin-top: auto; padding: 10px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); line-height: 1.7; }
+        main.content { flex: 1; min-width: 0; padding: 30px 32px 72px; max-width: 1080px; }
+        @media (max-width: 860px) {
+            .shell { flex-direction: column; }
+            .sidenav { width: 100%; height: auto; position: static; flex-direction: row; overflow-x: auto; padding: 10px 12px; gap: 4px; border-bottom: 1px solid var(--line); }
+            .snav-label, .snav-foot { display: none; }
+            .snav-item { width: auto; white-space: nowrap; }
+            main.content { padding: 22px 18px 60px; }
+        }
+        .tabpane { display: none; }
+        .tabpane.active { display: block; }
+
+        .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+        .page-head h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+        .page-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+
+        /* ---------- Project list (table-style rows in one panel) ---------- */
+        .grid {
+            display: flex; flex-direction: column;
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+        }
+        .project-card {
+            display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: 10px 24px; align-items: center;
+            padding: 14px 18px; background: var(--surface);
+            border-bottom: 1px solid var(--line);
+        }
+        .project-card:last-child { border-bottom: none; }
+        .project-card:hover { background: var(--surface-2); }
+        @media (max-width: 760px) {
+            .project-card { grid-template-columns: 1fr; }
+            .pc-actions { justify-content: flex-start; flex-wrap: wrap; }
+        }
+        .project-card.off h3, .project-card.off .slug, .project-card.off .pc-desc { opacity: .55; }
+        .project-card .pc-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .project-icon {
+            width: 36px; height: 36px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line);
+            color: var(--ink); display: flex; align-items: center; justify-content: center; flex: none;
+        }
+        .project-card h3 { margin: 0; font-size: 14.5px; color: var(--ink); }
+        .project-card .slug { color: var(--ink-3); font-size: 12px; font-family: var(--mono); }
+        .project-card .pc-desc { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge {
+            display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+            background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); letter-spacing: .03em;
+            vertical-align: middle;
+        }
+        .badge.global { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .badge.off { background: var(--danger-tint); border-color: rgba(185, 28, 28, .3); color: var(--danger); }
+        .pc-meta { color: var(--ink-2); font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
+        .pc-meta span { display: flex; align-items: center; gap: 7px; }
+        .pc-meta svg { color: var(--ink-3); }
+        .pc-actions { display: flex; gap: 8px; }
+
+        .empty {
+            text-align: center; padding: 52px 20px; color: var(--ink-2);
+            border: 1.5px dashed var(--line-2); border-radius: var(--radius); background: var(--surface);
+        }
+        .empty .big { display: flex; justify-content: center; margin-bottom: 12px; color: var(--ink-3); }
+
+        /* ---------- Stat tiles / monitor ---------- */
+        .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin-bottom: 16px; }
+        @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+        .tile { background: var(--surface); padding: 16px 18px; }
+        .tile .tv { font-family: var(--mono); font-size: 25px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+        .tile .tk { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-top: 2px; }
+
+        .mon-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+        .mon-head { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border-bottom: 1px solid var(--line); }
+        .mon-head h3 { margin: 0; font-size: 13.5px; font-weight: 600; }
+        .mon-head .sub { color: var(--ink-3); font-size: 11.5px; font-family: var(--mono); }
+        .mon-body { padding: 16px 18px; }
+        .mon-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 860px) { .mon-cols { grid-template-columns: 1fr; } }
+
+        .chart-wrap { overflow-x: auto; }
+        .chart-bar { fill: var(--chart-bar); }
+        .chart-bar:hover { fill: var(--chart-bar-hover); }
+        .chart-stub { fill: var(--line-2); }
+        .chart-txt { fill: var(--ink-3); font-family: var(--mono); font-size: 9px; }
+        .chart-peak { fill: var(--ink-2); font-family: var(--mono); font-size: 9px; }
+
+        table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table.tbl th {
+            text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+            text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 7px 10px; border-bottom: 1px solid var(--line);
+        }
+        table.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--ink); }
+        table.tbl tr:last-child td { border-bottom: none; }
+        table.tbl td.num, table.tbl th.num { text-align: right; font-family: var(--mono); font-size: 12.5px; }
+        table.tbl td.mut { color: var(--ink-2); }
+        table.tbl td.mono { font-family: var(--mono); font-size: 12px; }
+        .st { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); }
+        .st.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .st.err { background: var(--danger-tint); border-color: rgba(185, 28, 28, .3); color: var(--danger); }
+
+        /* ---------- Toggle switch ---------- */
+        .switch { position: relative; width: 40px; height: 22px; flex: none; display: inline-block; }
+        .switch input { display: none; }
+        .switch .track { position: absolute; inset: 0; background: var(--line-2); border-radius: 999px; transition: background .18s; cursor: pointer; }
+        .switch .track::after {
+            content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+            background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: left .18s;
+        }
+        .switch input:checked + .track { background: var(--accent); }
+        .switch input:checked + .track::after { left: 21px; }
+        .switch.sm { width: 34px; height: 19px; }
+        .switch.sm .track::after { width: 13px; height: 13px; }
+        .switch.sm input:checked + .track::after { left: 18px; }
+
+        .setting-row { display: flex; align-items: flex-start; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); background: var(--surface); }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-row .sr-txt { flex: 1; min-width: 0; }
+        .setting-row h4 { margin: 0 0 3px; font-size: 14px; }
+        .setting-row p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+        .kv { display: grid; grid-template-columns: 190px 1fr; gap: 8px 16px; font-size: 13px; padding: 16px 18px; }
+        .kv .k { color: var(--ink-3); font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; padding-top: 2px; }
+        .kv .v { color: var(--ink); font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+        @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px 0; } .kv .v { margin-bottom: 8px; } }
+
+        /* ---------- Modal ---------- */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(24, 24, 27, .4);
+            display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 40;
+        }
+        .modal {
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); width: 100%; max-width: 560px;
+            box-shadow: var(--shadow-lg); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .modal.wide { max-width: 680px; }
+        .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+        .modal-head h3 { margin: 0; font-size: 16px; color: var(--ink); }
+        .modal-head .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+        .modal-body { padding: 22px; overflow-y: auto; }
+        .modal-foot { padding: 14px 22px; border-top: 1px solid var(--line); background: var(--surface-2); display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+        .icon-btn { background: transparent; color: var(--ink-2); font-size: 20px; width: 32px; height: 32px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { background: var(--bg); color: var(--ink); }
+        .field textarea {
+            width: 100%; padding: 11px 14px; border: 1px solid var(--line-2); border-radius: 10px;
+            font-size: 14px; background: var(--surface); color: var(--ink); font-family: var(--font);
+            resize: vertical; min-height: 72px; transition: border .18s, box-shadow .18s;
+        }
+        .field textarea:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 4px rgba(35, 35, 39, .06); }
+        .field select {
+            width: 100%; padding: 11px 14px; border: 1px solid var(--line-2); border-radius: 10px;
+            font-size: 14px; background: var(--surface); color: var(--ink); font-family: var(--font);
+        }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .meta-box { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+        .meta-box .mk { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+        .meta-box .mv { font-size: 12.5px; color: var(--ink); margin-top: 2px; font-family: var(--mono); }
+
+        /* ---------- Dropzone & upload ---------- */
+        .dropzone {
+            border: 1.5px dashed var(--line-2); border-radius: 6px; padding: 24px 20px; text-align: center;
+            background: var(--surface-2); transition: border-color .15s; cursor: pointer;
+        }
+        .dropzone:hover, .dropzone.drag { border-color: var(--ink); }
+        .dropzone .dz-icon { display: flex; justify-content: center; color: var(--ink); margin-bottom: 4px; }
+        .dropzone .dz-title { font-weight: 600; margin: 8px 0 2px; color: var(--ink); }
+        .dropzone .dz-sub { color: var(--ink-2); font-size: 12.5px; }
+
+        .hint-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin: 16px 0 8px; display: flex; align-items: center; gap: 7px; }
+        .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip {
+            border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 14px; font-size: 12.5px;
+            cursor: pointer; background: var(--surface); color: var(--ink-2); font-weight: 550; user-select: none;
+        }
+        .chip:hover { border-color: var(--ink-3); }
+        .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+        .file-row {
+            display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line);
+            border-radius: 6px; margin-top: 10px; font-size: 13.5px; background: var(--surface);
+        }
+        .file-row > svg { color: var(--ink-3); flex: none; }
+        .file-row .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--ink); }
+        .file-row .fsize { color: var(--ink-3); font-size: 12px; flex: none; font-family: var(--mono); }
+        .status-pill { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 4px; flex: none; letter-spacing: .04em; font-family: var(--mono); border: 1px solid var(--line); }
+        .status-pill.indexed { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .status-pill.processing, .status-pill.queued, .status-pill.pending { background: var(--surface-2); color: var(--ink-2); }
+        .status-pill.failed, .status-pill.error { background: var(--danger-tint); border-color: rgba(185, 28, 28, .3); color: var(--danger); }
+        .status-pill.review { background: #FEF3C7; border-color: #FCD34D; color: #92400E; }
+
+        .doc-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+        .doc-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
+        .doc-item:last-child { border-bottom: none; }
+        .doc-item .doc-ico { display: flex; color: var(--ink-3); flex: none; }
+        .doc-item .doc-name { flex: 1; min-width: 200px; overflow: hidden; font-weight: 500; font-size: 14px; color: var(--ink); }
+        .doc-item .doc-name small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rich-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+        .rb { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; }
+        .rb svg { color: var(--ink-3); }
+        .review-row {
+            flex-basis: 100%; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px;
+            padding: 10px 12px; font-size: 12.5px; color: #92400E; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .review-row .rv-actions { display: flex; gap: 8px; margin-left: auto; }
+
+        .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin: 20px 0 8px; font-family: var(--mono); }
+
+        /* ---------- Toast ---------- */
+        #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 60; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--ink); color: #fff;
+            padding: 12px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500;
+            box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px; animation: slideIn .2s ease;
+            max-width: 360px;
+        }
+        .toast.error { background: #fff; border: 1px solid rgba(185, 28, 28, .4); color: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ---------- Integration blocks ---------- */
+        .int-block { margin-bottom: 18px; }
+        .int-block .int-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .int-block .int-label span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); font-family: var(--mono); }
+        .code {
+            position: relative; background: var(--surface-2); color: var(--ink); border-radius: 6px;
+            padding: 12px 14px; font-family: var(--mono); font-size: 12.5px;
+            line-height: 1.55; white-space: pre-wrap; word-break: break-all; overflow-x: auto; border: 1px solid var(--line);
+        }
+        .code.one-line { white-space: nowrap; overflow-x: auto; padding-right: 76px; }
+        .int-note { font-size: 12.5px; color: var(--ink-2); margin: 6px 2px 0; }
+        .int-note code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; font-family: var(--mono); color: var(--ink); }
+
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff;
+            border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
+        }
+        .btn-ghost .spinner { border-color: var(--line-2); border-top-color: var(--ink); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginView">
+    <div class="login-card">
+        <div class="login-side">
+            <div>
+                <div class="login-brand"><span class="bm" data-lx="layers" data-s="24"></span>Stratum</div>
+                <div class="tag">retrieval engine · admin console</div>
+            </div>
+            <div class="facts">
+                <div class="fact"><span data-lx="boxes" data-s="16"></span><span><strong>Projects are strata.</strong> Each one is an isolated knowledge base with its own chat endpoint.</span></div>
+                <div class="fact"><span data-lx="scan" data-s="16"></span><span><strong>Vision OCR built in.</strong> Scanned pages, tables and charts are detected on upload and read by a local vision model.</span></div>
+                <div class="fact"><span data-lx="activity" data-s="16"></span><span><strong>Watch it being used.</strong> Every API call is logged — see which site asked what, live.</span></div>
+            </div>
+        </div>
+        <div class="login-form-side">
+            <h1>Welcome back</h1>
+            <p class="sub">Sign in to manage projects and documents.</p>
+            <div id="loginError" class="login-error hidden"></div>
+            <form id="loginForm">
+                <div class="field">
+                    <label for="username">Username</label>
+                    <div class="in-wrap"><span data-lx="user" data-s="15"></span>
+                        <input type="text" id="username" autocomplete="username" placeholder="admin" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <div class="in-wrap"><span data-lx="lock" data-s="15"></span>
+                        <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <button type="submit" id="loginBtn" class="btn btn-primary">Sign in</button>
+            </form>
+            <p class="login-hint">authorized personnel only · sessions are signed &amp; expiring</p>
+        </div>
+    </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appView" class="hidden">
+    <div class="topbar">
+        <div class="logo" data-lx="layers" data-s="20"></div>
+        <div class="title">Stratum<small>admin console</small></div>
+        <div class="spacer"></div>
+        <a class="tblink" href="/" target="_blank">Home</a>
+        <a class="tblink" href="/docs" target="_blank">API</a>
+        <div class="user-chip">
+            <span class="avatar" id="userAvatar">A</span>
+            <span id="userName">admin</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+    </div>
+
+    <div class="shell">
+        <aside class="sidenav">
+            <div class="snav-label">Console</div>
+            <button class="snav-item active" data-tab="projects" onclick="switchTab('projects')"><span data-lx="boxes" data-s="16"></span>Projects</button>
+            <button class="snav-item" data-tab="monitor" onclick="switchTab('monitor')"><span data-lx="activity" data-s="16"></span>API Monitor</button>
+            <button class="snav-item" data-tab="domains" onclick="switchTab('domains')"><span data-lx="shield" data-s="16"></span>Domains</button>
+            <button class="snav-item" data-tab="settings" onclick="switchTab('settings')"><span data-lx="gear" data-s="16"></span>Settings</button>
+            <div class="snav-foot">stratum console v2<br>vision ocr · api monitor</div>
+        </aside>
+
+        <main class="content">
+
+            <!-- ============ PROJECTS ============ -->
+            <section class="tabpane active" id="tab-projects">
+                <div class="page-head">
+                    <div>
+                        <h2>Projects</h2>
+                        <p>Each project is a separate knowledge base powering its own chatbot.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openCreateProject()"><span data-lx="plus" data-s="16"></span> New Project</button>
+                </div>
+                <div id="projectsArea">
+                    <div class="empty"><div class="big" data-lx="loader" data-s="30"></div>Loading projects…</div>
+                </div>
+            </section>
+
+            <!-- ============ API MONITOR ============ -->
+            <section class="tabpane" id="tab-monitor">
+                <div class="page-head">
+                    <div>
+                        <h2>API Monitor</h2>
+                        <p>Every chat-API call, logged: which site asked, for which project, how fast.</p>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); cursor:pointer;">
+                            <label class="switch sm"><input type="checkbox" id="monAuto" checked onchange="setMonitorAuto(this.checked)"><span class="track"></span></label>
+                            Auto-refresh
+                        </label>
+                        <button class="btn btn-ghost btn-sm" onclick="loadMonitor()"><span data-lx="refresh" data-s="13"></span> Refresh</button>
+                        <button class="btn btn-ghost btn-sm" onclick="seedDemoTraffic(this)" title="Inserts clearly-labelled demo.* rows so the dashboard can be shown before real sites are wired up">Insert sample traffic</button>
+                    </div>
+                </div>
+                <div id="monitorArea">
+                    <div class="empty"><div class="big" data-lx="loader" data-s="30"></div>Loading metrics…</div>
+                </div>
+            </section>
+
+            <!-- ============ DOMAINS ============ -->
+            <section class="tabpane" id="tab-domains">
+                <div class="page-head">
+                    <div>
+                        <h2>Domain Whitelist</h2>
+                        <p>Control which websites are allowed to call the chat API from a browser.</p>
+                    </div>
+                </div>
+                <div id="domainsArea">
+                    <div class="empty"><div class="big" data-lx="loader" data-s="30"></div>Loading domains…</div>
+                </div>
+            </section>
+
+            <!-- ============ SETTINGS ============ -->
+            <section class="tabpane" id="tab-settings">
+                <div class="page-head">
+                    <div>
+                        <h2>Settings</h2>
+                        <p>Platform-wide switches and environment info.</p>
+                    </div>
+                </div>
+                <div id="settingsArea">
+                    <div class="empty"><div class="big" data-lx="loader" data-s="30"></div>Loading settings…</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toasts"></div>
+
+<script>
+    // ---------------- Lucide icons (inlined, ISC) ----------------
+    const LX = {
+        layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+        user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+        plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+        boxes: '<path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/>',
+        upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+        code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+        file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+        globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+        box: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+        folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+        loader: '<line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/>',
+        download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+        flask: '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
+        activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+        shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+        gear: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+        pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+        table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+        image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+        scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>',
+        alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+        refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+        chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+        key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
+    };
+    function lx(name, size) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LX[name] || ''}</svg>`;
+    }
+    function mountIcons(scope) {
+        (scope || document).querySelectorAll('[data-lx]').forEach(el => {
+            el.innerHTML = lx(el.dataset.lx, parseInt(el.dataset.s || '16', 10));
+            el.removeAttribute('data-lx');
+        });
+    }
+    mountIcons();
+
+    // ---------------- Auth / state ----------------
+    const TOKEN_KEY = 'stratum_admin_token';
+    let token = localStorage.getItem(TOKEN_KEY) || '';
+    let currentUser = null;
+    let currentSlug = '';
+    let appConfig = null;      // cached /admin/config response
+    let projectsCache = [];    // last /admin/projects response
+    let settingsCache = null;  // last /admin/settings response
+    let monitorTimer = null;
+    let docTimer = null;
+
+    function authHeaders(extra = {}) {
+        return { 'Authorization': `Bearer ${token}`, ...extra };
+    }
+
+    async function api(path, options = {}) {
+        const res = await fetch(path, { ...options, headers: authHeaders(options.headers || {}) });
+        if (res.status === 401) {
+            token = ''; localStorage.removeItem(TOKEN_KEY);
+            showLogin();
+            throw new Error('Session expired. Please sign in again.');
+        }
+        return res;
+    }
+
+    const RESTART_HINT = 'The API server is running an older build — restart it (uvicorn app.main:app) and reload this page.';
+
+    // Parse a JSON response, turning HTTP errors into readable messages instead of
+    // letting "{detail: ...}" flow into code that expects an array.
+    async function jsonOrThrow(res) {
+        let data = null;
+        try { data = await res.json(); } catch { data = null; }
+        if (!res.ok) {
+            if (res.status === 404) throw new Error(RESTART_HINT);
+            throw new Error((data && data.detail) || `Request failed (HTTP ${res.status})`);
+        }
+        return data;
+    }
+    function asArray(x) { return Array.isArray(x) ? x : []; }
+
+    // ---------------- Toasts ----------------
+    function toast(msg, type = '') {
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        document.getElementById('toasts').appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 3600);
+    }
+
+    // ---------------- Login ----------------
+    function showLogin() {
+        stopMonitorTimer();
+        document.getElementById('appView').classList.add('hidden');
+        document.getElementById('loginView').classList.remove('hidden');
+    }
+    function showApp() {
+        document.getElementById('loginView').classList.add('hidden');
+        document.getElementById('appView').classList.remove('hidden');
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('loginBtn');
+        const errBox = document.getElementById('loginError');
+        errBox.classList.add('hidden');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in…';
+        try {
+            const res = await fetch('/admin/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value.trim(),
+                    password: document.getElementById('password').value,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Login failed');
+            token = data.token;
+            localStorage.setItem(TOKEN_KEY, token);
+            currentUser = data.user;
+            document.getElementById('password').value = '';
+            enterApp();
+        } catch (err) {
+            errBox.textContent = err.message;
+            errBox.classList.remove('hidden');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Sign in';
+        }
+    });
+
+    function logout() {
+        token = ''; localStorage.removeItem(TOKEN_KEY); currentUser = null;
+        showLogin();
+    }
+
+    function enterApp() {
+        const name = (currentUser && (currentUser.full_name || currentUser.username)) || 'Admin';
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+        showApp();
+        const hashTab = (location.hash || '').replace('#', '');
+        switchTab(['projects', 'monitor', 'domains', 'settings'].includes(hashTab) ? hashTab : 'projects');
+    }
+
+    // ---------------- Tabs ----------------
+    function switchTab(name) {
+        document.querySelectorAll('.snav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
+        location.hash = name;
+        stopMonitorTimer();
+        if (name === 'projects') loadProjects();
+        if (name === 'monitor') { loadMonitor(); startMonitorTimer(); }
+        if (name === 'domains') loadDomains();
+        if (name === 'settings') loadSettings();
+    }
+
+    // ---------------- Projects ----------------
+    async function loadProjects() {
+        const area = document.getElementById('projectsArea');
+        try {
+            const res = await api('/admin/projects');
+            const projects = await res.json();
+            projectsCache = projects;
+            if (!projects.length) {
+                area.innerHTML = `<div class="empty"><div class="big">${lx('folder', 30)}</div><div style="font-weight:600;color:var(--ink)">No projects yet</div><div style="margin-top:4px">Create your first project to start uploading documents.</div></div>`;
+                return;
+            }
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+            projects.forEach(p => {
+                const off = p.status === 'disabled';
+                const card = document.createElement('div');
+                card.className = 'project-card' + (off ? ' off' : '');
+                card.innerHTML = `
+                    <div class="pc-top">
+                        <div class="project-icon">${p.is_global ? lx('globe', 20) : lx('box', 20)}</div>
+                        <div style="min-width:0">
+                            <h3>${escapeHtml(p.name)} ${p.is_global ? '<span class="badge global">Global</span>' : ''} ${off ? '<span class="badge off">Disabled</span>' : ''}</h3>
+                            <div class="slug">${escapeHtml(p.slug)}</div>
+                            ${p.description ? `<div class="pc-desc">${escapeHtml(p.description)}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="pc-meta">
+                        <span>${lx('file', 13)} ${p.doc_count} document${p.doc_count === 1 ? '' : 's'}</span>
+                        <span>${lx('activity', 13)} ${p.hits_24h} call${p.hits_24h === 1 ? '' : 's'} · 24 h</span>
+                    </div>
+                    <div class="pc-actions">
+                        <button class="btn btn-primary btn-sm" data-act="docs">Manage Docs</button>
+                        <button class="btn btn-ghost btn-sm" data-act="embed">${lx('code', 13)} Embed &amp; API</button>
+                        <button class="btn btn-ghost btn-sm" data-act="edit" title="Edit project">${lx('pencil', 13)}</button>
+                        <a class="btn btn-ghost btn-sm" href="/?slug=${encodeURIComponent(p.slug)}" target="_blank">${lx('flask', 13)} Test</a>
+                    </div>`;
+                card.querySelector('[data-act="docs"]').addEventListener('click', () => openDocManager(p.slug, p.name));
+                card.querySelector('[data-act="embed"]').addEventListener('click', () => openIntegration(p.slug, p.name));
+                card.querySelector('[data-act="edit"]').addEventListener('click', () => openEditProject(p.slug));
+                grid.appendChild(card);
+            });
+            area.innerHTML = '';
+            area.appendChild(grid);
+        } catch (err) {
+            area.innerHTML = `<div class="empty">Could not load projects. ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    // ---------------- Modals ----------------
+    function closeModal() {
+        document.getElementById('modalRoot').innerHTML = '';
+        if (docTimer) { clearInterval(docTimer); docTimer = null; }
+    }
+    function renderModal(html) { document.getElementById('modalRoot').innerHTML = html; mountIcons(document.getElementById('modalRoot')); }
+
+    function openCreateProject() {
+        renderModal(`
+            <div class="overlay" onclick="if(event.target===this)closeModal()">
+              <div class="modal">
+                <div class="modal-head">
+                    <div><h3>New Project</h3><div class="sub">A dedicated knowledge base with its own chatbot.</div></div>
+                    <button class="icon-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field">
+                        <label for="npName">Project name</label>
+                        <input type="text" id="npName" placeholder="e.g. Vendor Management" autofocus>
+                    </div>
+                    <div class="field">
+                        <label for="npDesc">Description <span style="color:var(--ink-3);font-weight:400">(optional)</span></label>
+                        <textarea id="npDesc" placeholder="What lives in this knowledge base, and who is it for?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="npCreate" onclick="submitCreateProject()">Create Project</button>
+                </div>
+              </div>
+            </div>`);
+        setTimeout(() => document.getElementById('npName').focus(), 30);
+        document.getElementById('npName').addEventListener('keydown', e => { if (e.key === 'Enter') submitCreateProject(); });
+    }
+
+    async function submitCreateProject() {
+        const name = document.getElementById('npName').value.trim();
+        if (!name) return toast('Enter a project name', 'error');
+        const btn = document.getElementById('npCreate');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+        try {
+            const res = await api('/admin/projects', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, description: document.getElementById('npDesc').value.trim() }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            closeModal();
+            toast('Project created', 'success');
+            loadProjects();
+        } catch (err) {
+            btn.disabled = false; btn.textContent = 'Create Project';
+            toast(err.message, 'error');
+        }
+    }
+
+    // ---------------- Edit project ----------------
+    function openEditProject(slug) {
+        const p = projectsCache.find(x => x.slug === slug);
+        if (!p) return;
+        const fmt = iso => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+        renderModal(`
+            <div class="overlay" onclick="if(event.target===this)closeModal()">
+              <div class="modal">
+                <div class="modal-head">
+                    <div><h3>Edit Project</h3><div class="sub mono" style="font-family:var(--mono)">${escapeHtml(p.slug)}</div></div>
+                    <button class="icon-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="meta-grid">
+                        <div class="meta-box"><div class="mk">Created</div><div class="mv">${fmt(p.created_at)}</div></div>
+                        <div class="meta-box"><div class="mk">Last updated</div><div class="mv">${fmt(p.updated_at)}</div></div>
+                    </div>
+                    <div class="field">
+                        <label for="epName">Project name</label>
+                        <input type="text" id="epName" value="${escapeHtml(p.name)}">
+                        <div class="int-note" style="margin-top:5px">The slug <code>${escapeHtml(p.slug)}</code> is permanent so live embeds &amp; API URLs never break.</div>
+                    </div>
+                    <div class="field">
+                        <label for="epDesc">Description</label>
+                        <textarea id="epDesc" placeholder="What lives in this knowledge base?">${escapeHtml(p.description || '')}</textarea>
+                    </div>
+                    ${p.is_global ? '' : `
+                    <div class="setting-row" style="border:1px solid var(--line); border-radius:8px;">
+                        <div class="sr-txt">
+                            <h4>Project enabled</h4>
+                            <p>When off, this project's chat endpoint and widget return "disabled" to every caller.</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="epEnabled" ${p.status !== 'disabled' ? 'checked' : ''}><span class="track"></span></label>
+                    </div>`}
+                </div>
+                <div class="modal-foot">
+                    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="epSave" onclick="submitEditProject('${escapeJs(p.slug)}', ${p.is_global})">Save changes</button>
+                </div>
+              </div>
+            </div>`);
+    }
+
+    async function submitEditProject(slug, isGlobal) {
+        const name = document.getElementById('epName').value.trim();
+        if (!name) return toast('Name cannot be empty', 'error');
+        const body = { name, description: document.getElementById('epDesc').value.trim() };
+        if (!isGlobal) {
+            body.status = document.getElementById('epEnabled').checked ? 'active' : 'disabled';
+        }
+        const btn = document.getElementById('epSave');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+        try {
+            const res = await api(`/admin/projects/${encodeURIComponent(slug)}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Save failed');
+            closeModal();
+            toast('Project updated', 'success');
+            loadProjects();
+        } catch (err) {
+            btn.disabled = false; btn.textContent = 'Save changes';
+            toast(err.message, 'error');
+        }
+    }
+
+    // ---------------- Document manager ----------------
+    let stagedFiles = [];
+    let contentHint = 'auto';
+
+    async function openDocManager(slug, name) {
+        currentSlug = slug;
+        stagedFiles = [];
+        contentHint = 'auto';
+        renderModal(`
+            <div class="overlay" onclick="if(event.target===this)closeModal()">
+              <div class="modal wide">
+                <div class="modal-head">
+                    <div><h3>${escapeHtml(name)}</h3><div class="sub">Manage documents in this knowledge base</div></div>
+                    <button class="icon-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="dropzone" id="dropzone">
+                        <div class="dz-icon" data-lx="upload" data-s="28"></div>
+                        <div class="dz-title">Drag &amp; drop files here</div>
+                        <div class="dz-sub">or click to browse — PDF, Word or TXT · up to <span id="maxMb">25</span> MB each · multiple allowed</div>
+                        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.txt" class="hidden">
+                    </div>
+
+                    <div class="hint-label">${lx('scan', 15)} Do these documents contain images, charts, tables or scanned pages?</div>
+                    <div class="chip-group" id="hintChips">
+                        <span class="chip on" data-hint="auto" title="We pre-scan every PDF and pick the right engine per page">Auto-detect (recommended)</span>
+                        <span class="chip" data-hint="rich" title="Force the vision OCR deep scan">Yes — rich content</span>
+                        <span class="chip" data-hint="plain" title="Plain text extraction. If we detect rich content anyway, we'll ask before processing.">No — plain text</span>
+                    </div>
+
+                    <div id="stagedList"></div>
+                    <div id="stagedActions" class="hidden" style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+                        <button class="btn btn-ghost btn-sm" onclick="clearStaged()">Clear</button>
+                        <button class="btn btn-primary btn-sm" id="uploadBtn" onclick="uploadStaged()">Upload &amp; Index</button>
+                    </div>
+
+                    <div class="section-label">Indexed documents</div>
+                    <ul class="doc-list" id="docList"><li style="color:var(--muted);padding:8px 12px">Loading…</li></ul>
+                </div>
+              </div>
+            </div>`);
+
+        wireDropzone();
+        document.querySelectorAll('#hintChips .chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#hintChips .chip').forEach(c => c.classList.remove('on'));
+                chip.classList.add('on');
+                contentHint = chip.dataset.hint;
+            });
+        });
+        loadDocs();
+        // Light auto-refresh so queued → processing → indexed transitions show live.
+        docTimer = setInterval(loadDocs, 4000);
+    }
+
+    function wireDropzone() {
+        const dz = document.getElementById('dropzone');
+        const input = document.getElementById('fileInput');
+        dz.addEventListener('click', () => input.click());
+        input.addEventListener('change', () => { addStaged(input.files); input.value = ''; });
+        ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+        ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+        dz.addEventListener('drop', e => addStaged(e.dataTransfer.files));
+    }
+
+    const ALLOWED = ['pdf', 'doc', 'docx', 'txt'];
+    const MAX_BYTES = 25 * 1024 * 1024;
+
+    function addStaged(fileList) {
+        for (const f of fileList) {
+            const ext = (f.name.split('.').pop() || '').toLowerCase();
+            let error = null;
+            if (!ALLOWED.includes(ext)) error = 'Unsupported type';
+            else if (f.size > MAX_BYTES) error = 'Too large';
+            else if (stagedFiles.some(s => s.file.name === f.name && s.file.size === f.size)) continue;
+            stagedFiles.push({ file: f, error });
+        }
+        renderStaged();
+    }
+
+    function clearStaged() { stagedFiles = []; renderStaged(); }
+
+    function renderStaged() {
+        const list = document.getElementById('stagedList');
+        const actions = document.getElementById('stagedActions');
+        if (!stagedFiles.length) { list.innerHTML = ''; actions.classList.add('hidden'); return; }
+        actions.classList.remove('hidden');
+        list.innerHTML = stagedFiles.map((s, i) => `
+            <div class="file-row">
+                ${lx('file', 16)}
+                <span class="fname">${escapeHtml(s.file.name)}</span>
+                <span class="fsize">${fmtSize(s.file.size)}</span>
+                ${s.error ? `<span class="status-pill error">${s.error}</span>` : '<span class="status-pill pending">ready</span>'}
+                <button class="icon-btn" style="width:26px;height:26px;font-size:16px" onclick="unstage(${i})">&times;</button>
+            </div>`).join('');
+    }
+
+    function unstage(i) { stagedFiles.splice(i, 1); renderStaged(); }
+
+    async function uploadStaged() {
+        const valid = stagedFiles.filter(s => !s.error);
+        if (!valid.length) return toast('No valid files to upload', 'error');
+        const btn = document.getElementById('uploadBtn');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading…';
+
+        const fd = new FormData();
+        valid.forEach(s => fd.append('files', s.file));
+        fd.append('content_hint', contentHint);
+
+        try {
+            const res = await api(`/admin/projects/${encodeURIComponent(currentSlug)}/documents`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+            // Surface what the pre-scan found, per file.
+            (data.results || []).forEach(r => {
+                const d = r.detection;
+                if (r.status === 'needs_review' && d) {
+                    toast(`${r.filename}: detected ${detSummary(d)} — confirm below how to process it.`, 'error');
+                } else if (r.status === 'queued' && r.mode === 'deep' && d) {
+                    toast(`${r.filename}: detected ${detSummary(d)} — deep scan enabled.`);
+                }
+            });
+            if (!data.needs_review) toast(data.message || 'Uploaded', data.failed ? 'error' : 'success');
+
+            stagedFiles = [];
+            renderStaged();
+            loadDocs();
+            loadProjects();
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = 'Upload &amp; Index';
+        }
+    }
+
+    function detSummary(d) {
+        const bits = [];
+        if (d.tables) bits.push(`${d.tables} table${d.tables === 1 ? '' : 's'}`);
+        if (d.charts) bits.push(`${d.charts} chart${d.charts === 1 ? '' : 's'}`);
+        if (d.images) bits.push(`${d.images} image${d.images === 1 ? '' : 's'}`);
+        if (d.scanned_pages) bits.push(`${d.scanned_pages} scanned page${d.scanned_pages === 1 ? '' : 's'}`);
+        return bits.length ? bits.join(' · ') : 'no rich content';
+    }
+
+    function richBadges(d) {
+        if (!d) return '';
+        const items = [];
+        if (d.tables) items.push(`<span class="rb">${lx('table', 11)} ${d.tables} table${d.tables === 1 ? '' : 's'}</span>`);
+        if (d.charts) items.push(`<span class="rb">${lx('chart', 11)} ${d.charts} chart${d.charts === 1 ? '' : 's'}</span>`);
+        if (d.images) items.push(`<span class="rb">${lx('image', 11)} ${d.images} image${d.images === 1 ? '' : 's'}</span>`);
+        if (d.scanned_pages) items.push(`<span class="rb">${lx('scan', 11)} ${d.scanned_pages} scanned</span>`);
+        return items.length ? `<span class="rich-badges">${items.join('')}</span>` : '';
+    }
+
+    async function loadDocs() {
+        const el = document.getElementById('docList');
+        if (!el) return;
+        try {
+            const res = await api(`/admin/projects/${encodeURIComponent(currentSlug)}/documents`);
+            const docs = await res.json();
+            if (!docs.length) { el.innerHTML = '<li style="color:var(--muted);padding:8px 12px">No documents yet.</li>'; return; }
+            el.innerHTML = docs.map(d => {
+                const engine = d.ocr_engine ? ` · ${d.ocr_engine}` : '';
+                const mode = d.processing_mode === 'deep' ? ' · deep scan' : '';
+                const review = d.status === 'review' ? `
+                    <div class="review-row">
+                        ${lx('alert', 15)}
+                        <span>You marked this <strong>plain text</strong>, but we detected <strong>${detSummary(d.rich_content || {})}</strong>. How should it be processed?</span>
+                        <span class="rv-actions">
+                            <button class="btn btn-primary btn-sm" onclick="confirmDoc(${d.id}, 'deep')">Deep Scan (recommended)</button>
+                            <button class="btn btn-ghost btn-sm" onclick="confirmDoc(${d.id}, 'standard')">Plain text anyway</button>
+                            <button class="btn btn-danger-ghost btn-sm" onclick="deleteDoc(${d.id}, '${escapeJs(d.title)}')">Remove</button>
+                        </span>
+                    </div>` : '';
+                return `
+                <li class="doc-item">
+                    <span class="doc-ico">${lx('file', 17)}</span>
+                    <span class="doc-name">${escapeHtml(d.title)}
+                        <small>${d.n_chunks} chunk${d.n_chunks === 1 ? '' : 's'}${mode}${engine}${d.error ? ' · ' + escapeHtml(d.error) : ''}</small>
+                        ${richBadges(d.rich_content)}
+                    </span>
+                    <span class="status-pill ${d.status}">${d.status === 'review' ? 'action needed' : d.status}</span>
+                    <button class="btn btn-danger-ghost btn-sm" onclick="deleteDoc(${d.id}, '${escapeJs(d.title)}')">Delete</button>
+                    ${review}
+                </li>`;
+            }).join('');
+        } catch (err) {
+            el.innerHTML = `<li style="color:var(--danger);padding:8px 12px">${escapeHtml(err.message)}</li>`;
+        }
+    }
+
+    async function confirmDoc(id, mode) {
+        try {
+            const res = await api(`/admin/projects/${encodeURIComponent(currentSlug)}/documents/${id}/process`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            toast(data.message || 'Queued', 'success');
+            loadDocs();
+        } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function deleteDoc(id, title) {
+        if (!confirm(`Delete "${title}"?\nThis removes it from the knowledge base and cannot be undone.`)) return;
+        try {
+            const res = await api(`/admin/projects/${encodeURIComponent(currentSlug)}/documents/${id}`, { method: 'DELETE' });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Delete failed'); }
+            toast('Document deleted', 'success');
+            loadDocs();
+            loadProjects();
+        } catch (err) { toast(err.message, 'error'); }
+    }
+
+    // ---------------- API Monitor ----------------
+    function startMonitorTimer() {
+        stopMonitorTimer();
+        const auto = document.getElementById('monAuto');
+        if (auto && auto.checked) monitorTimer = setInterval(() => loadMonitor(true), 5000);
+    }
+    function stopMonitorTimer() {
+        if (monitorTimer) { clearInterval(monitorTimer); monitorTimer = null; }
+    }
+    function setMonitorAuto(on) { on ? startMonitorTimer() : stopMonitorTimer(); }
+
+    async function loadMonitor(silent) {
+        const area = document.getElementById('monitorArea');
+        try {
+            const [sumRes, reqRes] = await Promise.all([
+                api('/admin/metrics/summary'),
+                api('/admin/metrics/requests?limit=40'),
+            ]);
+            const sum = await jsonOrThrow(sumRes);
+            const reqs = asArray(await jsonOrThrow(reqRes));
+            area.innerHTML = renderMonitor(sum, reqs);
+            mountIcons(area);
+        } catch (err) {
+            if (!silent) area.innerHTML = `<div class="empty">Could not load metrics.<br><span style="font-size:13px">${escapeHtml(err.message)}</span></div>`;
+        }
+    }
+
+    function renderMonitor(sum, reqs) {
+        const tiles = `
+            <div class="tiles">
+                <div class="tile"><div class="tv">${fmtNum(sum.total)}</div><div class="tk">Total requests</div></div>
+                <div class="tile"><div class="tv">${fmtNum(sum.last_24h)}</div><div class="tk">Last 24 hours</div></div>
+                <div class="tile"><div class="tv">${sum.avg_latency_ms != null ? sum.avg_latency_ms + '<span style="font-size:14px"> ms</span>' : '—'}</div><div class="tk">Avg latency · 24 h</div></div>
+                <div class="tile"><div class="tv">${fmtNum(sum.blocked_24h)}</div><div class="tk">Blocked / errors · 24 h</div></div>
+            </div>`;
+
+        const chart = `
+            <div class="mon-panel">
+                <div class="mon-head"><h3>Requests · last 24 hours</h3><span class="sub">hourly</span></div>
+                <div class="mon-body chart-wrap">${hourlyChart(sum.hourly || [])}</div>
+            </div>`;
+
+        const projRows = (sum.by_project || []).map(r => `
+            <tr><td>${escapeHtml(r.name || r.slug)}</td><td class="mut mono">${escapeHtml(r.slug)}</td><td class="num">${fmtNum(r.count)}</td></tr>`).join('')
+            || '<tr><td colspan="3" class="mut">No traffic yet — chat with any project widget, or insert sample traffic.</td></tr>';
+
+        const origRows = (sum.by_origin || []).map(r => `
+            <tr><td class="mono">${escapeHtml(r.origin)}</td><td class="num">${fmtNum(r.count)}</td><td class="mut mono">${fmtAgo(r.last_at)}</td></tr>`).join('')
+            || '<tr><td colspan="3" class="mut">No traffic yet.</td></tr>';
+
+        const cols = `
+            <div class="mon-cols">
+                <div class="mon-panel" style="margin-bottom:0">
+                    <div class="mon-head"><h3>Hits by project</h3></div>
+                    <table class="tbl"><thead><tr><th>Project</th><th>Slug</th><th class="num">Requests</th></tr></thead><tbody>${projRows}</tbody></table>
+                </div>
+                <div class="mon-panel" style="margin-bottom:0">
+                    <div class="mon-head"><h3>Hits by origin</h3><span class="sub">which site called</span></div>
+                    <table class="tbl"><thead><tr><th>Origin</th><th class="num">Requests</th><th>Last seen</th></tr></thead><tbody>${origRows}</tbody></table>
+                </div>
+            </div>`;
+
+        const feedRows = (reqs || []).map(r => `
+            <tr>
+                <td class="mut mono">${fmtAgo(r.created_at)}</td>
+                <td class="mono">${escapeHtml(r.project_slug || '—')}</td>
+                <td class="mono">${escapeHtml(r.origin || 'direct')}</td>
+                <td><span class="st ${r.status_code < 400 ? 'ok' : 'err'}">${r.status_code}</span></td>
+                <td class="num">${r.latency_ms != null ? r.latency_ms + ' ms' : '—'}</td>
+            </tr>`).join('')
+            || '<tr><td colspan="5" class="mut">No requests logged yet.</td></tr>';
+
+        const feed = `
+            <div class="mon-panel" style="margin-top:16px">
+                <div class="mon-head"><h3>Live request feed</h3><span class="sub">most recent first</span></div>
+                <div style="max-height:340px; overflow-y:auto">
+                <table class="tbl"><thead><tr><th>When</th><th>Project</th><th>Origin</th><th>Status</th><th class="num">Latency</th></tr></thead><tbody>${feedRows}</tbody></table>
+                </div>
+            </div>`;
+
+        return tiles + chart + cols + feed;
+    }
+
+    // Single-series hourly bar chart. Marks in the validated chart color; all
+    // text in ink tokens; zero hours render as 2px stubs so the axis reads on.
+    function hourlyChart(hourly) {
+        const W = 480, H = 110, plotH = 84, top = 14, slot = W / 24, barW = 13;
+        const max = Math.max(1, ...hourly.map(h => h.count));
+        let peakIdx = -1, peakVal = 0;
+        hourly.forEach((h, i) => { if (h.count > peakVal) { peakVal = h.count; peakIdx = i; } });
+        const bars = hourly.map((h, i) => {
+            const x = (i * slot + (slot - barW) / 2).toFixed(1);
+            const hh = h.count === 0 ? 2 : Math.max(3, Math.round((h.count / max) * plotH));
+            const y = top + plotH - hh;
+            const t = new Date(h.hour);
+            const label = `${t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} — ${h.count} request${h.count === 1 ? '' : 's'}`;
+            return `<rect class="${h.count === 0 ? 'chart-stub' : 'chart-bar'}" x="${x}" y="${y}" width="${barW}" height="${hh}" rx="2"><title>${escapeHtml(label)}</title></rect>`;
+        }).join('');
+        const peak = peakIdx >= 0 && peakVal > 0 ? (() => {
+            const x = peakIdx * slot + slot / 2;
+            const y = top + plotH - Math.max(3, Math.round((peakVal / max) * plotH)) - 5;
+            const anchor = peakIdx < 3 ? 'start' : (peakIdx > 20 ? 'end' : 'middle');
+            return `<text class="chart-peak" x="${x.toFixed(1)}" y="${y}" text-anchor="${anchor}">${peakVal}</text>`;
+        })() : '';
+        return `
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Requests per hour over the last 24 hours"
+                 style="width:100%; height:auto; display:block; min-width:420px">
+                ${bars}${peak}
+                <line x1="0" y1="${top + plotH + 0.5}" x2="${W}" y2="${top + plotH + 0.5}" stroke="var(--line-2)" stroke-width="1"/>
+                <text class="chart-txt" x="2" y="${H - 2}">24 h ago</text>
+                <text class="chart-txt" x="${W - 2}" y="${H - 2}" text-anchor="end">now</text>
+            </svg>`;
+    }
+
+    async function seedDemoTraffic(btn) {
+        btn.disabled = true;
+        try {
+            const res = await api('/admin/metrics/demo-data', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            toast(data.message || 'Sample traffic inserted', 'success');
+            loadMonitor();
+        } catch (err) { toast(err.message, 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    // ---------------- Domains ----------------
+    async function loadDomains() {
+        const area = document.getElementById('domainsArea');
+        try {
+            const [domRes, setRes, projRes] = await Promise.all([
+                api('/admin/domains'),
+                api('/admin/settings'),
+                api('/admin/projects'),
+            ]);
+            const domains = asArray(await jsonOrThrow(domRes));
+            settingsCache = await jsonOrThrow(setRes);
+            projectsCache = asArray(await jsonOrThrow(projRes));
+
+            const opts = ['<option value="">All projects</option>']
+                .concat(projectsCache.map(p => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name)}</option>`)).join('');
+
+            const rows = domains.map(d => `
+                <tr>
+                    <td class="mono">${escapeHtml(d.domain)}</td>
+                    <td>${d.project ? escapeHtml(d.project.name) : '<span class="badge">All projects</span>'}</td>
+                    <td class="mut">${d.note ? escapeHtml(d.note) : '—'}</td>
+                    <td class="mut mono">${d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}</td>
+                    <td style="text-align:right"><button class="btn btn-danger-ghost btn-sm" onclick="removeDomain(${d.id}, '${escapeJs(d.domain)}')">Remove</button></td>
+                </tr>`).join('')
+                || '<tr><td colspan="5" class="mut">No domains whitelisted yet. With enforcement ON, browser calls from unlisted sites are rejected.</td></tr>';
+
+            area.innerHTML = `
+                <div class="mon-panel">
+                    <div class="setting-row">
+                        <div class="sr-txt">
+                            <h4>Enforce domain whitelist</h4>
+                            <p>When on, chat-API calls from a browser whose <span class="mono">Origin</span> isn't listed below get a 403.
+                               Server-to-server calls (no origin, e.g. curl) always pass — this is a browser-facing control.</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="dwEnforce" ${settingsCache.domain_whitelist_enforced ? 'checked' : ''} onchange="saveSetting('domain_whitelist_enforced', this.checked)"><span class="track"></span></label>
+                    </div>
+                </div>
+
+                <div class="mon-panel">
+                    <div class="mon-head"><h3>Add a domain</h3><span class="sub">e.g. docs.example.com or *.example.com</span></div>
+                    <div class="mon-body" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end">
+                        <div class="field" style="flex:2; min-width:200px; margin:0"><label>Domain</label><input type="text" id="ndDomain" placeholder="docs.example.com"></div>
+                        <div class="field" style="flex:1.4; min-width:160px; margin:0"><label>Applies to</label><select id="ndProject">${opts}</select></div>
+                        <div class="field" style="flex:1.6; min-width:160px; margin:0"><label>Note (optional)</label><input type="text" id="ndNote" placeholder="Marketing site"></div>
+                        <button class="btn btn-primary" onclick="addDomain(this)"><span data-lx="plus" data-s="15"></span> Add</button>
+                    </div>
+                </div>
+
+                <div class="mon-panel">
+                    <div class="mon-head"><h3>Whitelisted domains</h3></div>
+                    <table class="tbl"><thead><tr><th>Domain</th><th>Applies to</th><th>Note</th><th>Added</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+                </div>`;
+            mountIcons(area);
+            document.getElementById('ndDomain').addEventListener('keydown', e => { if (e.key === 'Enter') addDomain(); });
+        } catch (err) {
+            area.innerHTML = `<div class="empty">Could not load domains. ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    async function addDomain(btn) {
+        const domain = document.getElementById('ndDomain').value.trim();
+        if (!domain) return toast('Enter a domain', 'error');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await api('/admin/domains', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    domain,
+                    project_slug: document.getElementById('ndProject').value,
+                    note: document.getElementById('ndNote').value.trim(),
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            toast(`${data.domain} whitelisted`, 'success');
+            loadDomains();
+        } catch (err) { toast(err.message, 'error'); }
+        finally { if (btn) btn.disabled = false; }
+    }
+
+    async function removeDomain(id, domain) {
+        if (!confirm(`Remove "${domain}" from the whitelist?`)) return;
+        try {
+            const res = await api(`/admin/domains/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            toast('Domain removed', 'success');
+            loadDomains();
+        } catch (err) { toast(err.message, 'error'); }
+    }
+
+    // ---------------- Settings ----------------
+    async function loadSettings() {
+        const area = document.getElementById('settingsArea');
+        try {
+            const [setRes, cfgRes] = await Promise.all([api('/admin/settings'), api('/admin/config')]);
+            settingsCache = await jsonOrThrow(setRes);
+            appConfig = await jsonOrThrow(cfgRes);
+
+            // Three states: true / false / undefined (undefined = the running server
+            // predates these fields — restart it rather than claiming "not pulled").
+            const stale = '<span class="badge off">unknown — restart the API server</span>';
+            const ocrBadge = appConfig.ocr_vision_available === undefined ? stale
+                : appConfig.ocr_vision_available
+                    ? '<span class="badge global">available</span>'
+                    : `<span class="badge">not pulled — run <span class="mono">ollama pull ${escapeHtml((appConfig.ocr_model || 'glm-ocr').split(':')[0])}</span></span>`;
+            const tessBadge = appConfig.tesseract_available === undefined ? stale
+                : appConfig.tesseract_available
+                    ? '<span class="badge global">available</span>' : '<span class="badge">not installed</span>';
+
+            area.innerHTML = `
+                <div class="mon-panel">
+                    <div class="mon-head"><h3>Retrieval switches</h3><span class="sub">take effect on the next question</span></div>
+                    <div class="setting-row">
+                        <div class="sr-txt">
+                            <h4>Global knowledge base</h4>
+                            <p>Merge the shared <span class="mono">${escapeHtml(appConfig.global_project_slug || 'general-policy')}</span> documents (HR policy, company rules…) into <strong>every</strong> project's answers.</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" ${settingsCache.global_project_enabled ? 'checked' : ''} onchange="saveSetting('global_project_enabled', this.checked)"><span class="track"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="sr-txt">
+                            <h4>Cross-project linking</h4>
+                            <p>Let every project's chatbot also search <strong>all other projects'</strong> documents. Off = strict per-project isolation.</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" ${settingsCache.cross_project_linking ? 'checked' : ''} onchange="saveSetting('cross_project_linking', this.checked)"><span class="track"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="sr-txt">
+                            <h4>Enforce domain whitelist</h4>
+                            <p>Also managed on the Domains tab. Browser calls from unlisted origins are rejected with 403.</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" ${settingsCache.domain_whitelist_enforced ? 'checked' : ''} onchange="saveSetting('domain_whitelist_enforced', this.checked)"><span class="track"></span></label>
+                    </div>
+                </div>
+
+                <div class="mon-panel">
+                    <div class="mon-head"><h3>Platform</h3><span class="sub">from .env — restart to change</span></div>
+                    <div class="kv">
+                        <div class="k">generation model</div><div class="v">${escapeHtml(appConfig.generation_model || '—')}</div>
+                        <div class="k">embedding model</div><div class="v">${escapeHtml(appConfig.embedding_model || '—')}</div>
+                        <div class="k">vision OCR model</div><div class="v">${escapeHtml(appConfig.ocr_model || '—')} ${ocrBadge}</div>
+                        <div class="k">tesseract fallback</div><div class="v">${tessBadge}</div>
+                        <div class="k">ollama endpoint</div><div class="v">${escapeHtml(appConfig.ollama_base_url || '—')}</div>
+                        <div class="k">global project slug</div><div class="v">${escapeHtml(appConfig.global_project_slug || '—')}</div>
+                    </div>
+                </div>
+
+                <div class="mon-panel">
+                    <div class="mon-head"><h3>Account</h3></div>
+                    <div class="mon-body">
+                        <button class="btn btn-ghost" onclick="openChangePassword()">${lx('key', 14)} Change password</button>
+                    </div>
+                </div>`;
+            mountIcons(area);
+        } catch (err) {
+            area.innerHTML = `<div class="empty">Could not load settings. ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    async function saveSetting(key, value) {
+        try {
+            const res = await api('/admin/settings', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [key]: value }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            settingsCache = data.settings;
+            toast('Setting saved', 'success');
+        } catch (err) {
+            toast(err.message, 'error');
+            // Re-sync the switches with reality.
+            const active = document.querySelector('.snav-item.active');
+            if (active && active.dataset.tab === 'domains') loadDomains(); else loadSettings();
+        }
+    }
+
+    // ---------------- Change password ----------------
+    function openChangePassword() {
+        renderModal(`
+            <div class="overlay" onclick="if(event.target===this)closeModal()">
+              <div class="modal">
+                <div class="modal-head">
+                    <div><h3>Change password</h3><div class="sub">Use a strong password of at least 8 characters.</div></div>
+                    <button class="icon-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field"><label>Current password</label><input type="password" id="cpCur"></div>
+                    <div class="field"><label>New password</label><input type="password" id="cpNew"></div>
+                    <div class="field"><label>Confirm new password</label><input type="password" id="cpConf"></div>
+                </div>
+                <div class="modal-foot">
+                    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="cpBtn" onclick="submitChangePassword()">Update password</button>
+                </div>
+              </div>
+            </div>`);
+    }
+
+    async function submitChangePassword() {
+        const cur = document.getElementById('cpCur').value;
+        const nw = document.getElementById('cpNew').value;
+        const cf = document.getElementById('cpConf').value;
+        if (nw.length < 8) return toast('New password must be at least 8 characters', 'error');
+        if (nw !== cf) return toast('Passwords do not match', 'error');
+        const btn = document.getElementById('cpBtn');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Updating…';
+        try {
+            const res = await api('/admin/auth/change-password', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: cur, new_password: nw }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            closeModal();
+            toast('Password updated', 'success');
+        } catch (err) {
+            btn.disabled = false; btn.textContent = 'Update password';
+            toast(err.message, 'error');
+        }
+    }
+
+    // ---------------- Integration / Embed & API ----------------
+    async function getConfig() {
+        if (appConfig) return appConfig;
+        const res = await api('/admin/config');
+        appConfig = await res.json();
+        return appConfig;
+    }
+
+    async function openIntegration(slug, name) {
+        renderModal(`
+            <div class="overlay" onclick="if(event.target===this)closeModal()">
+              <div class="modal wide">
+                <div class="modal-head">
+                    <div><h3>Embed &amp; API — ${escapeHtml(name)}</h3><div class="sub">Everything you need to connect this chatbot.</div></div>
+                    <button class="icon-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="intBody">
+                    <div style="color:var(--muted);padding:8px 0">Loading…</div>
+                </div>
+              </div>
+            </div>`);
+        try {
+            const cfg = await getConfig();
+            const origin = window.location.origin;
+            const apiUrl = `${origin}/api/${slug}/v1/chat/completions`;
+
+            document.getElementById('intBody').innerHTML = `
+                <div class="int-block">
+                    <div class="int-label"><span>API endpoint URL</span></div>
+                    ${codeBlock(apiUrl, 'url', true)}
+                    <p class="int-note">Every call is logged in the <strong>API Monitor</strong> tab. When domain whitelisting is enforced, only whitelisted sites can call it from a browser.</p>
+                </div>
+                <div class="int-block">
+                    <div class="int-label"><span>API key (Bearer token)</span></div>
+                    ${codeBlock(cfg.chatbot_api_key, 'key', true)}
+                    <p class="int-note">Send as header <code>Authorization: Bearer &lt;key&gt;</code>.</p>
+                </div>
+                <div class="int-block">
+                    <div class="int-label"><span>Active model</span></div>
+                    ${codeBlock(cfg.generation_model, 'model', true)}
+                    <p class="int-note">Change it in the server <code>.env</code> (<code>DEFAULT_GENERATION_MODEL</code>).</p>
+                </div>
+                <div class="int-block">
+                    <div class="int-label"><span>Widget script</span></div>
+                    <button class="btn btn-primary btn-sm" onclick="downloadWidget('${slug}')">${lx('download', 14)} Download chatbot.js</button>
+                    <p class="int-note">Pre-configured with your API key and this project's slug (<code>${escapeHtml(slug)}</code>). Host it on your site and load it with a <code>&lt;script&gt;</code> tag.</p>
+                </div>`;
+        } catch (err) {
+            document.getElementById('intBody').innerHTML = `<div style="color:var(--danger);padding:8px 0">${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    async function downloadWidget(slug) {
+        try {
+            // The server-served copy already has the real API key injected.
+            const res = await fetch('/static/chatbot.js');
+            if (!res.ok) throw new Error('Could not fetch chatbot.js');
+            let js = await res.text();
+            // Bake this project's slug in as the default so the file works as-is.
+            js = js.replace(/'demo-project'/g, `'${slug}'`);
+            const blob = new Blob([js], { type: 'application/javascript' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'chatbot.js';
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(a.href);
+            toast('chatbot.js downloaded', 'success');
+        } catch (err) { toast(err.message, 'error'); }
+    }
+
+    // Build a dark code block with a copy button. `id` must be unique within the modal.
+    function codeBlock(text, id, oneLine = false) {
+        window.__codeSnips = window.__codeSnips || {};
+        window.__codeSnips[id] = text;
+        return `<div class="code ${oneLine ? 'one-line' : ''}"><button class="copy-btn" onclick="copyCode('${id}', this)">Copy</button>${escapeHtml(text)}</div>`;
+    }
+
+    async function copyCode(id, btn) {
+        const text = (window.__codeSnips || {})[id] || '';
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                document.execCommand('copy'); ta.remove();
+            }
+            btn.textContent = 'Copied'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+        } catch { toast('Copy failed — select and copy manually', 'error'); }
+    }
+
+    // ---------------- Utils ----------------
+    function fmtSize(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+        return (b / 1024 / 1024).toFixed(1) + ' MB';
+    }
+    function fmtNum(n) {
+        if (n == null) return '—';
+        if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        return String(n);
+    }
+    function fmtAgo(iso) {
+        if (!iso) return '—';
+        const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+        if (s < 60) return Math.round(s) + 's ago';
+        if (s < 3600) return Math.round(s / 60) + 'm ago';
+        if (s < 86400) return Math.round(s / 3600) + 'h ago';
+        return Math.round(s / 86400) + 'd ago';
+    }
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function escapeJs(s) { return String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ---------------- Boot ----------------
+    (async function init() {
+        if (!token) return showLogin();
+        try {
+            const res = await fetch('/admin/auth/me', { headers: authHeaders() });
+            if (!res.ok) throw new Error('unauth');
+            currentUser = await res.json();
+            enterApp();
+        } catch {
+            token = ''; localStorage.removeItem(TOKEN_KEY);
+            showLogin();
+        }
+    })();
+</script>
+</body>
+</html>
